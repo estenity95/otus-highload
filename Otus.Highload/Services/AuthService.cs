@@ -1,4 +1,8 @@
-﻿using Microsoft.Extensions.Options;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Otus.Highload.Configurations;
 using Otus.Highload.Interfaces.Repositories;
 using Otus.Highload.Interfaces.Services;
@@ -41,5 +45,46 @@ public class AuthService : IAuthService
         };
 
         return await _userRepository.AddUserAsync(user, cancellationToken);
+    }
+    
+    /// <inheritdoc />
+    public async Task<string> LoginAsync(string email, string password, CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetUserByEmailAsync(email, cancellationToken);
+        
+        if (user == null)
+        {
+            // Пользователь отсутствует
+            return null;
+        }
+
+        // Проверяем пароль
+        var isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.Password);
+        if (!isPasswordValid)
+        {
+            // Неверный пароль
+            return null;
+        }
+        
+        // Генерация JWT
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(_jwtSettings.SecretKey);
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[] {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email)
+            }),
+            Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes),
+            Issuer = _jwtSettings.Issuer,
+            Audience = _jwtSettings.Audience,
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var jwtSecurityToken = tokenHandler.CreateJwtSecurityToken(tokenDescriptor);
+        var token = tokenHandler.WriteToken(jwtSecurityToken);
+
+        return token;
     }
 }

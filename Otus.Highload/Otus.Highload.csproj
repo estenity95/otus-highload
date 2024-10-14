@@ -6,21 +6,20 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <UserSecretsId>032b995b-1936-4a9f-8a33-272649520836</UserSecretsId>
+        <UserSecretsId>ce2033fd-f3f0-4ee5-9f3c-809817886008</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+      <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
       <PackageReference Include="Npgsql" Version="8.0.4" />
       <PackageReference Include="Npgsql.DependencyInjection" Version="8.0.4" />
       <PackageReference Include="Swashbuckle.AspNetCore" Version="6.8.1" />
       <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.8.1" />
       <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.8.1" />
       <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.8.1" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Models\Dtos\" />
+      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.2" />
     </ItemGroup>
 
 </Project>

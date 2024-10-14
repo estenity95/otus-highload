@@ -1,4 +1,4 @@
-﻿namespace Otus.Highload.Models;
+﻿namespace Otus.Highload.Models.Dtos;
 
 /// <summary>
 /// Error response model.

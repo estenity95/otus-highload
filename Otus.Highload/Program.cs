@@ -1,10 +1,15 @@
+using System.Reflection;
+using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Otus.Highload.Configurations;
 using Otus.Highload.Data.Repositories;
 using Otus.Highload.Extensions;
 using Otus.Highload.Interfaces.Repositories;
 using Otus.Highload.Interfaces.Services;
+using Otus.Highload.Middlewares;
 using Otus.Highload.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +18,10 @@ builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", optional: false)
     .AddEnvironmentVariables();
+
+#if DEBUG
+    builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly());
+#endif
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -32,7 +41,33 @@ builder.Services.Configure<RouteOptions>(options =>
 
 builder.Services.AddSwagger();
 
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+var jwtSettingsSection = builder.Configuration.GetSection("JwtSettings");
+builder.Services.Configure<JwtSettings>(jwtSettingsSection);
+
+var jwtSettings = jwtSettingsSection.Get<JwtSettings>();
+
+var key = Encoding.ASCII.GetBytes(jwtSettings.SecretKey);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings.Issuer,
+        ValidAudience = jwtSettings.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ClockSkew = TimeSpan.Zero
+    };
+});
 
 // DB configuration
 var connectionString = builder.Configuration.GetConnectionString("SocialNetwork") 
@@ -44,18 +79,23 @@ builder.Services.AddNpgsqlDataSource(connectionString);
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Add services to the container.
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (builder.Environment.IsDevelopment())
 {
     app.UseSwagger();
 }
 
-app.UseHttpsRedirection();
-
 app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 await app.RunAsync();
